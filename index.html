@@ -1,325 +1,314 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { 
-  Search, Instagram, Download, Lock, Zap, X, 
-  ExternalLink, Settings, Plus, Edit2, Save, 
-  Trash2, Key, Database, Sparkles, Layers, AlertTriangle 
-} from 'lucide-react';
-
-// Firebase Setup
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'mxcro-store-ultimate-v3';
-
-// Master List of 22 Apps
-const MASTER_APPS = [
-  { id: 1, name: "Capcut Pro", category: "Video Editing", downloadLink: "https://arolinks.com/o2fQtg", description: "No Watermark & All Effects", icon: "https://upload.wikimedia.org/wikipedia/commons/a/af/CapCut_logo.png" },
-  { id: 2, name: "Netflix Premium", category: "Streaming", downloadLink: "https://go.arlinks.in/AqAvmSA", description: "4K Content & No Ads", icon: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Netflix-new-icon.png" },
-  { id: 3, name: "Spotify Premium", category: "Music", downloadLink: "https://arolinks.com/spotify", description: "Offline Play & Ad-Free", icon: "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" },
-  { id: 4, name: "PicsArt Gold", category: "Photo Editing", downloadLink: "https://arolinks.com/picsart", description: "Gold Assets Unlocked", icon: "https://upload.wikimedia.org/wikipedia/commons/c/c3/PicsArt_Logo.png" },
-  { id: 5, name: "Alight Motion Pro", category: "Video Editing", downloadLink: "https://arolinks.com/alight", description: "Premium Preset Support", icon: "https://seeklogo.com/images/A/alight-motion-logo-9989091BAE-seeklogo.com.png" },
-  { id: 6, name: "Kinemaster Pro", category: "Video Editing", downloadLink: "https://arolinks.com/km", description: "4K Support & No Watermark", icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/KineMaster_logo.png/600px-KineMaster_logo.png" },
-  { id: 7, name: "Lightroom Premium", category: "Photo Editing", downloadLink: "https://arolinks.com/lr", description: "Pro Presets & AI Masking", icon: "https://upload.wikimedia.org/wikipedia/commons/b/b6/Adobe_Photoshop_Lightroom_CC_logo.svg" },
-  { id: 8, name: "VN Video Editor", category: "Video Editing", downloadLink: "https://arolinks.com/vn", description: "Filters & Fonts Unlocked", icon: "https://vlognow.me/wp-content/uploads/2021/04/vn-video-editor-logo.png" },
-  { id: 9, name: "Canva Pro", category: "Design", downloadLink: "https://arolinks.com/canva", description: "Enterprise Features Unlocked", icon: "https://upload.wikimedia.org/wikipedia/commons/0/08/Canva_icon_2021.svg" },
-  { id: 10, name: "Disney+ Hotstar", category: "Streaming", downloadLink: "https://arolinks.com/hotstar", description: "Premium VIP Content", icon: "https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_Hotstar_logo.png" },
-  { id: 11, name: "YouTube Vanced", category: "Tools", downloadLink: "https://arolinks.com/vanced", description: "Background Play & Ad-Free", icon: "https://upload.wikimedia.org/wikipedia/commons/d/dd/YouTube_Vanced_Icon.svg" },
-  { id: 12, name: "InShot Pro", category: "Video Editing", downloadLink: "https://arolinks.com/inshot", description: "Full Filter Pack Unlocked", icon: "https://upload.wikimedia.org/wikipedia/commons/a/a7/InShot_Logo.png" },
-  { id: 13, name: "Remini Pro", category: "Photo Editing", downloadLink: "https://arolinks.com/remini", description: "AI Enhancement Unlocked", icon: "https://reminipro.com/wp-content/uploads/2023/04/remini-logo.png" },
-  { id: 14, name: "Truecaller Gold", category: "Tools", downloadLink: "https://arolinks.com/true", description: "Gold Badge Unlocked", icon: "https://upload.wikimedia.org/wikipedia/commons/2/23/Truecaller_Logo.png" },
-  { id: 15, name: "Zarchiver Pro", category: "Tools", downloadLink: "https://arolinks.com/zar", description: "Advanced File Management", icon: "https://play-lh.googleusercontent.com/9-9-9-9" },
-  { id: 16, name: "Prime Video", category: "Streaming", downloadLink: "https://arolinks.com/prime", description: "Full HD Movie Access", icon: "https://upload.wikimedia.org/wikipedia/commons/1/11/Amazon_Prime_Video_logo.svg" },
-  { id: 17, name: "Snapseed Pro", category: "Photo Editing", downloadLink: "https://arolinks.com/snapseed", description: "Pro Grading Tools", icon: "https://upload.wikimedia.org/wikipedia/commons/5/5b/Snapseed_logo.png" },
-  { id: 18, name: "VideoShow Pro", category: "Video Editing", downloadLink: "https://arolinks.com/vshow", description: "VIP Pack Active", icon: "https://play-lh.googleusercontent.com/9-9-9-9" },
-  { id: 19, name: "Resso Premium", category: "Music", downloadLink: "https://arolinks.com/resso", description: "Ad-Free & Lyrics Sync", icon: "https://upload.wikimedia.org/wikipedia/commons/f/f6/Resso_logo.png" },
-  { id: 20, name: "VIVA Video Pro", category: "Video Editing", downloadLink: "https://arolinks.com/viva", description: "Premium Membership Unlocked", icon: "https://play-lh.googleusercontent.com/9-9-9-9" },
-  { id: 21, name: "PowerDirector", category: "Video Editing", downloadLink: "https://arolinks.com/pd", description: "4K Export & Assets", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e6/PowerDirector_logo.png" },
-  { id: 22, name: "JioCinema Premium", category: "Streaming", downloadLink: "https://arolinks.com/jio", description: "Ad-Free Premium Movies", icon: "https://upload.wikimedia.org/wikipedia/commons/c/c4/JioCinema_logo.png" }
-];
-
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [apps, setApps] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedApp, setSelectedApp] = useState(null);
-  const [visitedAccounts, setVisitedAccounts] = useState([]);
-  const [showAlert, setShowAlert] = useState(false);
-  
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [footerClicks, setFooterClicks] = useState(0);
-  const [editingApp, setEditingApp] = useState(null);
-
-  const adminPassword = "ashishjaiswal8252568155";
-  const instaAccounts = [
-    { id: 1, handle: '@_ashish_jaiswal007', link: 'https://instagram.com/_ashish_jaiswal007' },
-    { id: 2, handle: '@mxcro_editzz07', link: 'https://instagram.com/mxcro_editzz07' }
-  ];
-
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MXCRO STORE - OFFICIAL</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: #000; 
+            color: #fff; 
+            margin: 0; 
+            padding: 0;
+            user-select: none;
+            overflow-x: hidden;
         }
-      } catch (err) { console.error("Authentication failed", err); }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    const appsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_repository', 'apps_list');
-    
-    const unsubscribe = onSnapshot(appsDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setApps(snapshot.data().items || []);
-      } else {
-        setDoc(appsDocRef, { items: MASTER_APPS });
-        setApps(MASTER_APPS);
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
+        .glass-card {
+            background: rgba(18, 18, 18, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+        }
 
-  const pushToCloud = async (newList) => {
-    if (!user) return;
-    const appsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_repository', 'apps_list');
-    await setDoc(appsDocRef, { items: newList });
-  };
+        /* Hidden Host Setting Logo (Secret Dot) */
+        .host-trigger {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            width: 15px;
+            height: 15px;
+            background: #1a0000;
+            border-radius: 50%;
+            z-index: 9999;
+            cursor: pointer;
+        }
 
-  const handleAppClick = (app) => {
-    if (isAdminMode) {
-      setEditingApp({ ...app });
-    } else if (isUnlocked) {
-      window.open(app.downloadLink, '_blank');
-    } else {
-      setSelectedApp(app);
-      setShowModal(true);
-    }
-  };
+        /* Locked/Blur Effect */
+        .locked-content {
+            filter: blur(25px);
+            opacity: 0.1;
+            pointer-events: none;
+            transition: all 0.7s ease;
+            transform: scale(0.98);
+        }
 
-  const checkAdmin = () => {
-    if (passwordInput === adminPassword) {
-      setIsAdminMode(true);
-      setShowAdminLogin(false);
-      setPasswordInput("");
-    } else {
-      alert("Unauthorized Access!");
-    }
-  };
+        .unlocked-content {
+            filter: blur(0) !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: scale(1) !important;
+        }
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const updatedData = {
-      id: editingApp.id === 'new' ? Date.now() : editingApp.id,
-      name: fd.get('name'),
-      category: fd.get('category'),
-      downloadLink: fd.get('link'),
-      description: fd.get('desc'),
-      icon: fd.get('icon')
-    };
+        /* App Profile Card Style */
+        .app-card {
+            background: linear-gradient(145deg, #0f0f0f, #181818);
+            border: 1px solid #222;
+            border-radius: 26px;
+            transition: transform 0.2s, border-color 0.3s;
+        }
 
-    let updatedList = editingApp.id === 'new' ? [updatedData, ...apps] : apps.map(a => a.id === editingApp.id ? updatedData : a);
-    setApps(updatedList);
-    await pushToCloud(updatedList);
-    setEditingApp(null);
-  };
+        .app-card:active {
+            transform: scale(0.96);
+            border-color: #dc2626;
+        }
 
-  const filteredApps = apps.filter(a => 
-    a.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    a.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.98);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
 
-  return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-600/50">
-      
-      {isAdminMode && (
-        <div className="bg-purple-600 text-white py-2 text-center sticky top-0 z-[60] font-black text-[10px] tracking-widest uppercase">
-          Cloud Admin Active
-          <button onClick={() => setIsAdminMode(false)} className="ml-4 bg-black/40 px-3 py-0.5 rounded-full">Exit</button>
-        </div>
-      )}
+        input {
+            background: #111 !important;
+            border: 1px solid #333 !important;
+            color: #fff !important;
+            padding: 16px;
+            border-radius: 18px;
+            width: 100%;
+            outline: none;
+        }
 
-      {/* Header */}
-      <header className="pt-24 pb-16 px-6 text-center">
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-xl">
-          <Sparkles size={14} className="text-purple-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">22 Premium Apps Cloud</span>
-        </div>
-        <h1 className="text-7xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500 mb-4">MXCRO STORE</h1>
-        <p className="text-gray-600 text-[10px] font-bold tracking-[0.8em] uppercase">Premium Mods Repository</p>
-      </header>
+        /* Scrollbar hide */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="pb-24">
 
-      <main className="max-w-xl mx-auto px-6 pb-40">
-        <div className="relative mb-16">
-          <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-gray-500" size={22} />
-          <input
-            type="text"
-            placeholder="Search from 22+ apps..."
-            className="w-full bg-[#0d0d0d] border border-white/5 rounded-[2.5rem] py-7 pl-16 pr-8 outline-none focus:border-purple-500/30 text-lg shadow-2xl"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+    <!-- Secret Host Button (Sirf aapke liye) -->
+    <div class="host-trigger" onclick="openLogin()"></div>
 
-        {isAdminMode && (
-          <button onClick={() => setEditingApp({id: 'new', name: '', category: 'Tools', downloadLink: '', description: '', icon: ''})} className="w-full mb-10 p-10 border-2 border-dashed border-white/5 rounded-[3.5rem] flex flex-col items-center gap-2 text-gray-700 hover:text-purple-500 transition-all">
-            <Plus size={32} />
-            <span className="text-[10px] font-black uppercase">Add New App</span>
-          </button>
-        )}
+    <div id="mainUI">
+        <!-- Brand Header -->
+        <header class="text-center pt-14 pb-8">
+            <h1 class="text-6xl font-black italic tracking-tighter text-red-600 uppercase">MXCRO STORE</h1>
+            <p class="text-zinc-600 text-[9px] tracking-[6px] font-bold uppercase mt-2">Verified Premium Cloud</p>
+        </header>
 
-        {/* App List */}
-        <div className="grid gap-5">
-          {filteredApps.map((app) => (
-            <div key={app.id} onClick={() => handleAppClick(app)} className="bg-[#0d0d0d] border border-white/5 p-6 rounded-[2.8rem] flex items-center gap-6 hover:bg-[#121212] transition-all cursor-pointer active:scale-[0.98]">
-              <img src={app.icon || "https://via.placeholder.com/64"} className="w-16 h-16 rounded-[1.8rem] object-cover border border-white/10 shadow-2xl" alt="" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-black text-xl text-white/90 truncate">{app.name}</h3>
-                <span className="text-[8px] bg-purple-500/10 text-purple-400 px-2.5 py-1 rounded-full font-black uppercase tracking-tighter border border-purple-500/20">{app.category}</span>
-                <p className="text-xs text-gray-600 mt-2 truncate font-medium">{app.description}</p>
-              </div>
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isUnlocked || isAdminMode ? 'bg-purple-600 shadow-purple-600/30' : 'bg-white/5 text-gray-700'}`}>
-                {isUnlocked || isAdminMode ? <Download size={22} className="animate-bounce" /> : <Lock size={22} />}
-              </div>
+        <!-- Verification Steps Section -->
+        <section id="verifySection" class="max-w-md mx-auto px-6 mb-12">
+            <div class="glass-card p-8 border border-red-900/30">
+                <p class="text-center text-[10px] font-black uppercase text-red-500 mb-8 tracking-widest">Verification Steps</p>
+                <div class="space-y-4">
+                    <!-- Ashish Jaiswal Link -->
+                    <a href="https://www.instagram.com/_ashish_jaiswal007?igsh=dGNxbXI3MWZ1dGo0" target="_blank" onclick="vUpdate(1)" class="flex items-center justify-between p-4 bg-zinc-900 rounded-2xl border border-zinc-800 hover:border-pink-600 transition-all">
+                        <div class="flex items-center gap-3">
+                            <i class="fab fa-instagram text-2xl text-pink-600"></i>
+                            <span class="font-bold text-sm">@_ashish_jaiswal007</span>
+                        </div>
+                        <i id="tick1" class="fas fa-check-circle text-zinc-900"></i>
+                    </a>
+                    <!-- Mxcro Editzz Link -->
+                    <a href="https://www.instagram.com/mxcro_editzz07" target="_blank" onclick="vUpdate(2)" class="flex items-center justify-between p-4 bg-zinc-900 rounded-2xl border border-zinc-800 hover:border-pink-600 transition-all">
+                        <div class="flex items-center gap-3">
+                            <i class="fab fa-instagram text-2xl text-pink-600"></i>
+                            <span class="font-bold text-sm">@mxcro_editzz07</span>
+                        </div>
+                        <i id="tick2" class="fas fa-check-circle text-zinc-900"></i>
+                    </a>
+                </div>
+                <div id="loadingBar" class="hidden mt-8">
+                    <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+                        <div id="barFill" class="bg-red-600 h-full w-0 transition-all duration-[3000ms]"></div>
+                    </div>
+                </div>
+                <button id="unlockBtn" onclick="unlockNow()" class="hidden w-full mt-8 py-5 bg-white text-black font-black uppercase rounded-2xl text-sm shadow-xl hover:scale-105 active:scale-95 transition-all">Unlock Premium Mods</button>
             </div>
-          ))}
+        </section>
+
+        <!-- List Heading -->
+        <div class="max-w-md mx-auto px-8 mb-6 flex justify-between items-center">
+            <h2 class="text-[11px] font-black uppercase tracking-[4px] text-zinc-500">Premium Apps (<span id="count">0</span>)</h2>
         </div>
-      </main>
 
-      {/* Social Modal with Mandatory Warning */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/98 backdrop-blur-3xl">
-          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-[4rem] p-12 relative shadow-3xl">
-            <button onClick={() => setShowModal(false)} className="absolute top-10 right-10 text-gray-700 hover:text-white"><X size={28} /></button>
-            
-            <div className="text-center mb-10">
-              <div className="w-24 h-24 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-3xl rotate-12">
-                <Instagram size={54} className="text-white" />
-              </div>
-              <h2 className="text-4xl font-black text-white mb-4 tracking-tighter italic">LOCKED!</h2>
-              
-              {/* Mandatory Warning Message */}
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-6 flex items-center gap-3 text-left">
-                <AlertTriangle className="text-red-500 shrink-0" size={20} />
-                <p className="text-[11px] text-red-400 font-bold uppercase leading-relaxed">
-                  Warning ⚠️: Pehle niche diye dono accounts ko follow karein tabhi download link unlock hogi!
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-4 mb-10">
-              {instaAccounts.map((acc) => (
-                <button 
-                  key={acc.id} 
-                  onClick={() => { 
-                    window.open(acc.link, '_blank'); 
-                    if (!visitedAccounts.includes(acc.id)) setVisitedAccounts([...visitedAccounts, acc.id]);
-                  }}
-                  className={`w-full flex items-center justify-between p-6 rounded-3xl transition-all border ${visitedAccounts.includes(acc.id) ? 'bg-purple-600/10 border-purple-500/30 text-purple-400' : 'bg-white/[0.03] border-white/5 text-gray-400 hover:text-white'}`}
-                >
-                  <span className="font-bold text-sm">{acc.handle}</span>
-                  <ExternalLink size={18} />
-                </button>
-              ))}
-            </div>
+        <!-- Apps Container (Initial State is Blurred) -->
+        <main id="appsContainer" class="max-w-md mx-auto px-6 space-y-5 locked-content">
+            <!-- JavaScript will render the 22 apps here -->
+        </main>
+    </div>
 
-            <button 
-              onClick={() => {
-                if (visitedAccounts.length >= 2) {
-                  setIsUnlocked(true);
-                  setShowModal(false);
-                  if (selectedApp) window.open(selectedApp.downloadLink, '_blank');
-                } else {
-                  setShowAlert(true);
-                  setTimeout(() => setShowAlert(false), 3000);
-                }
-              }}
-              className={`w-full py-7 rounded-[2.5rem] font-black text-xl transition-all ${visitedAccounts.length >= 2 ? 'bg-purple-600 text-white shadow-2xl' : 'bg-white/5 text-gray-800'}`}
-            >
-              {visitedAccounts.length >= 2 ? 'CONTINUE DOWNLOAD' : 'FOLLOW FIRST'}
-            </button>
-            
-            {showAlert && (
-              <p className="text-center text-red-500 font-black text-[9px] mt-4 uppercase tracking-widest animate-bounce">
-                ❌ Dono accounts follow karna zaruri hai!
-              </p>
-            )}
-          </div>
+    <!-- Master Key Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="glass-card p-10 w-full max-w-sm">
+            <h2 class="text-2xl font-black text-center mb-8 uppercase italic">Host Login</h2>
+            <input type="password" id="passInput" placeholder="Enter Host Key" class="text-center mb-6">
+            <div class="flex gap-3">
+                <button onclick="closeLogin()" class="flex-1 py-4 bg-zinc-900 rounded-2xl font-bold text-xs uppercase">Back</button>
+                <button onclick="checkPass()" class="flex-1 py-4 bg-red-600 rounded-2xl font-bold text-xs uppercase">Access</button>
+            </div>
         </div>
-      )}
+    </div>
 
-      {/* Admin Forms & Auth Portal */}
-      {editingApp && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
-          <form onSubmit={handleSave} className="bg-[#0f0f0f] border border-white/10 w-full max-w-md rounded-[4rem] p-10 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-black uppercase text-purple-500 mb-10">Cloud Sync</h3>
-            <div className="space-y-6">
-              <input name="name" defaultValue={editingApp.name} placeholder="App Name" className="w-full bg-black border border-white/5 rounded-2xl py-5 px-7 text-white outline-none focus:border-purple-600" required />
-              <input name="icon" defaultValue={editingApp.icon} placeholder="Icon URL" className="w-full bg-black border border-white/5 rounded-2xl py-5 px-7 text-white outline-none focus:border-purple-600" />
-              <input name="link" defaultValue={editingApp.downloadLink} placeholder="Download Link" className="w-full bg-black border border-white/5 rounded-2xl py-5 px-7 text-white outline-none focus:border-purple-600" required />
-              <input name="desc" defaultValue={editingApp.description} placeholder="Mod Info" className="w-full bg-black border border-white/5 rounded-2xl py-5 px-7 text-white outline-none focus:border-purple-600" />
-              <select name="category" defaultValue={editingApp.category} className="w-full bg-black border border-white/5 rounded-2xl py-5 px-7 text-white outline-none appearance-none">
-                <option>Video Editing</option><option>Photo Editing</option><option>Streaming</option><option>Music</option><option>Tools</option>
-              </select>
-            </div>
-            <div className="flex gap-4 mt-10">
-              <button type="submit" className="flex-1 bg-purple-600 text-white font-black py-6 rounded-3xl">SAVE TO CLOUD</button>
-              <button type="button" onClick={() => setEditingApp(null)} className="p-6 bg-white/5 rounded-3xl">CANCEL</button>
-            </div>
-          </form>
+    <!-- Host Admin Panel -->
+    <div id="adminPanel" class="hidden fixed inset-0 bg-black z-[10001] overflow-y-auto p-6">
+        <div class="flex items-center justify-between border-b border-zinc-900 pb-6 mb-8 sticky top-0 bg-black pt-2">
+            <h2 class="text-3xl font-black italic text-red-600 tracking-tighter uppercase">Editor</h2>
+            <button onclick="syncCloud()" id="syncBtn" class="bg-green-600 px-8 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-green-900/40">Sync to Cloud</button>
         </div>
-      )}
+        <div id="editorSpace" class="space-y-4"></div>
+        <button onclick="location.reload()" class="w-full mt-10 py-5 bg-zinc-900 rounded-3xl font-black text-xs uppercase tracking-widest border border-zinc-800">Exit Editor</button>
+    </div>
 
-      {/* Footer Secret Portal */}
-      <footer 
-        className="mt-20 py-24 text-center cursor-pointer group" 
-        onClick={() => {
-          const clicks = footerClicks + 1;
-          setFooterClicks(clicks);
-          if (clicks >= 3) { setShowAdminLogin(true); setFooterClicks(0); }
-          setTimeout(() => setFooterClicks(0), 4000);
-        }}
-      >
-        <div className="h-1 w-16 bg-purple-600/10 mx-auto mb-10 group-hover:w-24 group-hover:bg-purple-600 transition-all rounded-full"></div>
-        <p className="text-[10px] text-gray-800 font-black tracking-[0.8em] uppercase group-hover:text-purple-400/30 transition-colors">
-          Ashish Jaiswal Exclusive
-        </p>
-      </footer>
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-      {showAdminLogin && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/98">
-          <div className="bg-[#080808] border border-white/10 w-full max-w-xs rounded-[3.5rem] p-12 text-center shadow-3xl">
-            <Key className="mx-auto mb-8 text-purple-400" size={50} />
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              className="w-full bg-black border border-white/10 rounded-2xl py-6 px-6 mb-10 text-center text-white text-2xl font-mono tracking-[0.3em] outline-none"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && checkAdmin()}
-              autoFocus
-            />
-            <button onClick={checkAdmin} className="w-full py-5 bg-white text-black font-black rounded-2xl uppercase text-[11px] tracking-widest shadow-xl">Verify Root</button>
-            <button onClick={() => setShowAdminLogin(false)} className="w-full mt-4 text-gray-700 text-[10px] uppercase font-black">Cancel</button>
-          </div>
-        </div>
-      )}
+        // Firebase Configuration (Provided by environment)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mxcostore_github_v1';
 
-      <style>{`
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 10px; }
-        b
+        // 22 Premium Apps Master Data
+        let storeApps = [
+            { name: "Capcut Premium", icon: "🎬", link: "https://arolinks.com/o2fQtg" },
+            { name: "Alight Motion Pro", icon: "💎", link: "https://go.arlinks.in/4gxW4XTy" },
+            { name: "Netflix Mod", icon: "🍿", link: "https://go.arlinks.in/AqAvmSA" },
+            { name: "Spotify Ad-Free", icon: "🎵", link: "https://arolinks.com/LBUrJ" },
+            { name: "PicsArt Gold", icon: "🎨", link: "https://example.com" },
+            { name: "Kinemaster Pro", icon: "🎞️", link: "https://example.com" },
+            { name: "VN Editor Mod", icon: "✂️", link: "https://example.com" },
+            { name: "InShot Pro", icon: "📹", link: "https://example.com" },
+            { name: "Lightroom Mod", icon: "📸", link: "https://example.com" },
+            { name: "Canva Premium", icon: "🖌️", link: "https://example.com" },
+            { name: "Remini Premium", icon: "✨", link: "https://example.com" },
+            { name: "Truecaller Gold", icon: "📞", link: "https://example.com" },
+            { name: "VPN Master Pro", icon: "🌐", link: "https://example.com" },
+            { name: "YouTube Vanced", icon: "📺", link: "https://example.com" },
+            { name: "Prime Video Mod", icon: "📦", link: "https://example.com" },
+            { name: "Disney+ Mod", icon: "🏰", link: "https://example.com" },
+            { name: "Zarchiver Pro", icon: "📂", link: "https://example.com" },
+            { name: "VivaCut Pro", icon: "🌌", link: "https://example.com" },
+            { name: "PowerDirector", icon: "🎞️", link: "https://example.com" },
+            { name: "Pixellab Mod", icon: "📝", link: "https://example.com" },
+            { name: "FilmoraGo Pro", icon: "📼", link: "https://example.com" },
+            { name: "Intro Maker Mod", icon: "🎬", link: "https://example.com" }
+        ];
+
+        const MASTER_PASS = "ashishjaiswal8252568155";
+        let step1 = false, step2 = false;
+
+        // Sync Data with Firestore
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'store_data');
+                onSnapshot(docRef, (snap) => {
+                    if(snap.exists()) storeApps = snap.data().list || storeApps;
+                    renderApps();
+                });
+            } else {
+                await signInAnonymously(auth);
+            }
+        });
+
+        // Function to render apps list
+        function renderApps() {
+            const container = document.getElementById('appsContainer');
+            document.getElementById('count').innerText = storeApps.length;
+            container.innerHTML = storeApps.map((app, idx) => `
+                <div class="app-card p-5 flex items-center justify-between shadow-lg">
+                    <div class="flex items-center gap-5">
+                        <div class="w-16 h-16 bg-black rounded-[22px] border border-zinc-800 flex items-center justify-center text-3xl shadow-inner">${app.icon}</div>
+                        <div>
+                            <h4 class="font-black text-[14px] text-white tracking-tight">${app.name}</h4>
+                            <p class="text-[9px] text-red-600 font-bold uppercase tracking-[2px] mt-1">Unlocked Premium</p>
+                        </div>
+                    </div>
+                    <a href="${app.link}" target="_blank" class="bg-red-600 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-tighter shadow-lg shadow-red-900/30">Get Mod</a>
+                </div>
+            `).join('');
+        }
+
+        // Verification Logic
+        window.vUpdate = (n) => {
+            if(n === 1) { step1 = true; document.getElementById('tick1').className = "fas fa-check-circle text-green-500"; }
+            if(n === 2) { step2 = true; document.getElementById('tick2').className = "fas fa-check-circle text-green-500"; }
+            if(step1 && step2) {
+                document.getElementById('loadingBar').classList.remove('hidden');
+                setTimeout(() => document.getElementById('barFill').style.width = '100%', 100);
+                setTimeout(() => document.getElementById('unlockBtn').classList.remove('hidden'), 3100);
+            }
+        };
+
+        window.unlockNow = () => {
+            document.getElementById('appsContainer').classList.add('unlocked-content');
+            document.getElementById('verifySection').innerHTML = `
+                <div class="text-center py-4 bg-green-900/10 border border-green-500/20 rounded-3xl">
+                    <span class="text-green-500 font-black text-[10px] uppercase tracking-widest animate-pulse">✓ Store Unlocked • Enjoy Premium Mods</span>
+                </div>
+            `;
+        };
+
+        // Host Control System
+        window.openLogin = () => document.getElementById('loginModal').style.display = 'flex';
+        window.closeLogin = () => document.getElementById('loginModal').style.display = 'none';
+        window.checkPass = () => {
+            if(document.getElementById('passInput').value === MASTER_PASS) {
+                closeLogin();
+                document.getElementById('adminPanel').style.display = 'block';
+                document.getElementById('appsContainer').classList.add('unlocked-content');
+                loadEditor();
+            } else alert("Invalid Master Key!");
+        };
+
+        function loadEditor() {
+            const space = document.getElementById('editorSpace');
+            space.innerHTML = storeApps.map((app, i) => `
+                <div class="glass-card p-6 space-y-4">
+                    <p class="text-[9px] font-bold text-red-600 uppercase">App Slot #${i+1}</p>
+                    <div class="flex gap-3">
+                        <input type="text" id="icon-${i}" value="${app.icon}" class="w-20 text-center text-xl">
+                        <input type="text" id="name-${i}" value="${app.name}" class="flex-1 font-bold">
+                    </div>
+                    <input type="text" id="link-${i}" value="${app.link}" class="text-xs text-blue-400 font-mono">
+                </div>
+            `).join('');
+        }
+
+        window.syncCloud = async () => {
+            const btn = document.getElementById('syncBtn');
+            btn.innerText = "WAITING...";
+            const newList = storeApps.map((_, i) => ({
+                icon: document.getElementById(`icon-${i}`).value,
+                name: document.getElementById(`name-${i}`).value,
+                link: document.getElementById(`link-${i}`).value
+            }));
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'store_data'), { list: newList });
+                btn.innerText = "SYNC SUCCESS!";
+                setTimeout(() => btn.innerText = "Sync to Cloud", 2000);
+            } catch(e) { 
+                alert("Cloud Error: " + e.message); 
+                btn.innerText = "Sync to Cloud"; 
+            }
+        };
+
+    </script>
+</body>
+</html>
